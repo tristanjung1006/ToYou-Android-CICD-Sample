@@ -51,7 +51,7 @@
             android:id="@+id/memo_et"
             android:layout_width="190dp"
             android:layout_height="70dp"
-            style="@style/sc_l10"
+            style="@style/pre_l13"
             android:hint="답변을 입력해주세요."
             android:padding="5dp"
             android:includeFontPadding="false"

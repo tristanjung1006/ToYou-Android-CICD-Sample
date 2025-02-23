@@ -73,7 +73,7 @@ class SplashFragment : Fragment() {
 
         loginViewModel = ViewModelProvider(
             this,
-        LoginViewModelFactory(
+            LoginViewModelFactory(
                 authService,
                 tokenStorage,
                 tokenManager,

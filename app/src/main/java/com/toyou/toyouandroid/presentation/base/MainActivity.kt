@@ -12,12 +12,10 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import androidx.fragment.app.commit
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.setupWithNavController
 import com.toyou.toyouandroid.R
 import com.toyou.toyouandroid.databinding.ActivityMainBinding
-import com.toyou.toyouandroid.presentation.fragment.onboarding.SplashFragment
 import timber.log.Timber
 
 class MainActivity : AppCompatActivity() {
@@ -43,12 +41,6 @@ class MainActivity : AppCompatActivity() {
             0,
             0
         )
-
-        if (savedInstanceState == null) {
-            supportFragmentManager.commit {
-                replace(R.id.fragment_container, SplashFragment())
-            }
-        }
 
         val navHostFragment =
             supportFragmentManager.findFragmentById(R.id.fragment_container) as NavHostFragment
