@@ -27,5 +27,10 @@
         android:fontWeight="500"
         android:font="@font/scdream5" />
 
+    <font
+        android:fontStyle="normal"
+        android:fontWeight="300"
+        android:font="@font/pretendardlight"/>
+
 
 </font-family>
