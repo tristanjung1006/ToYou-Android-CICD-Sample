@@ -1,0 +1,150 @@
+name: test CD
+
+on:
+    push:
+        branches:
+            - master
+    pull_request:
+        branches:
+            - master
+
+jobs:
+    cd:
+        name: Continuous Deployment
+        runs-on: ubuntu-latest
+
+        steps:
+            # 1. Code Checkout
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            # 2. Gradle Cache
+            - name: Cache Gradle dependencies
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      ~/.gradle/caches
+                      ~/.gradle/wrapper
+                  key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+                  restore-keys: |
+                      ${{ runner.os }}-gradle-
+
+            # 3. JDK 17
+            - name: Set up JDK 17
+              uses: actions/setup-java@v4
+              with:
+                  java-version: 17
+                  distribution: 'corretto'
+                  cache: gradle
+
+            # 4. Grant Execute Permission
+            - name: Change gradlew permissions
+              run: chmod +x gradlew
+
+            # 5. Install Firebase CLI
+            - name: Install Firebase CLI
+              run: curl -sL https://firebase.tools | bash
+
+            # # 6. Decode google-services.json
+            # - name: Decode google-services.json
+            #   env:
+            #       FIREBASE_SECRET: ${{ secrets.FIREBASE_SECRET }}
+            #   run: echo $FIREBASE_SECRET | base64 --decode > app/google-services.json
+
+            # Add Local Properties
+            - name: Add Local Properties
+              env:
+                  BASE_URL: ${{ secrets.KAKAO_NATIVE_APP_KEY }}
+                  AMPLITUDE_API_KEY: ${{ secrets.KAKAO_NATIVE_APP_KEY_MANIFEST }}
+              run: |
+                  echo -e "kakao_NATIVE_APP_KEY=$KAKAO_NATIVE_APP_KEY\kakao_NATIVE_APP_KEY_MANIFEST=$KAKAO_NATIVE_APP_KEY_MANIFEST" >> local.properties
+
+            # 7. Debug Local Properties Check
+            -   name: Debug Local Properties
+                run: cat local.properties
+
+            # 8. Ktlint
+            - name: Run Ktlint Check
+              run: ./gradlew ktlintCheck --stacktrace
+
+            # 9. Debug APK Build
+            - name: Build Debug APK
+              run: ./gradlew assembleDebug --stacktrace
+
+            # 10. Release AAB Build
+            - name: Build Release AAB
+              run: ./gradlew bundleRelease --stacktrace
+
+            # 11. Release APK Build
+            - name: Build Release APK
+              run: ./gradlew assembleRelease --stacktrace
+
+            # 12. AAB Artifact Upload
+            - name: Upload Release AAB
+              uses: actions/upload-artifact@v4
+              with:
+                  name: release-aab
+                  path: app/build/outputs/bundle/release/app-release.aab
+
+            # 13. APK Artifact Upload
+            - name: Upload Release APK
+              uses: actions/upload-artifact@v4
+              with:
+                  name: release-apk
+                  path: app/build/outputs/apk/release/app-release.apk
+
+            # 14. Set up Firebase Service Account Credentials
+            - name: Set up Firebase Service Account Credentials
+              env:
+                  GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+              run: |
+                  echo "$GOOGLE_APPLICATION_CREDENTIALS_JSON" | base64 --decode > $HOME/firebase-credentials.json
+                  echo "🔥 Firebase Credentials JSON 생성 완료!"
+                  ls -l $HOME/firebase-credentials.json
+                  export GOOGLE_APPLICATION_CREDENTIALS=$HOME/firebase-credentials.json
+                  echo "GOOGLE_APPLICATION_CREDENTIALS=$GOOGLE_APPLICATION_CREDENTIALS"
+
+            # 15. Firebase CLI 인증 확인
+            - name: Check Firebase CLI Authentication
+              run: |
+                  export GOOGLE_APPLICATION_CREDENTIALS=$HOME/firebase-credentials.json
+
+                  echo "📌 GOOGLE_APPLICATION_CREDENTIALS 설정 값:"
+                  echo $GOOGLE_APPLICATION_CREDENTIALS
+                  ls -l $GOOGLE_APPLICATION_CREDENTIALS
+
+                  echo "📌 현재 Firebase 프로젝트 목록 확인:"
+                  firebase projects:list || (echo "❌ Firebase 인증 실패!"; exit 1)
+
+            # 16. Firebase App Distribution Upload
+            - name: Upload APK to Firebase App Distribution
+              env:
+                  GOOGLE_APPLICATION_CREDENTIALS: $HOME/firebase-credentials.json
+                  FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+              run: |
+                  echo "🔥 FIREBASE_APP_ID 확인: $FIREBASE_APP_ID"
+
+                  # 만약 FIREBASE_APP_ID가 없으면 에러 출력 후 종료
+                  if [ -z "$FIREBASE_APP_ID" ]; then
+                    echo "❌ ERROR: FIREBASE_APP_ID가 설정되지 않았습니다. GitHub Secrets에서 확인하세요."
+                    exit 1
+                  fi
+
+                  # GOOGLE_APPLICATION_CREDENTIALS를 다시 설정
+                  export GOOGLE_APPLICATION_CREDENTIALS=$HOME/firebase-credentials.json
+                  echo "GOOGLE_APPLICATION_CREDENTIALS=$GOOGLE_APPLICATION_CREDENTIALS"
+
+                  firebase appdistribution:distribute app/build/outputs/apk/release/app-release.apk \
+                  --app "$FIREBASE_APP_ID" \
+                  --release-notes "🚀 새로운 데모 버전이 배포되었습니다!" \
+                  --groups "orbit-tester-group"
+
+            # 17. Notify Discord
+            - name: Notify Discord
+              env:
+                  DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+              run: |
+                  curl -H "Content-Type: application/json" \
+                  -X POST \
+                  -d '{"content": "🚀 새로운 데모 버전이 Firebase App Distribution에 업로드되었습니다!\nAPK 다운로드: https://appdistribution.firebase.google.com"}' \
+                  $DISCORD_WEBHOOK_URL
