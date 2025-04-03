@@ -143,7 +143,7 @@ jobs:
               uses: wzieba/Firebase-Distribution-Github-Action@v1
               with:
                   appId: ${{secrets.FIREBASE_APP_ID}}
-                  serviceCredentialsFileContent: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+                  serviceCredentialsFileContent: ${{ secrets.CREDENTIAL_FILE_CONTENT }}
                   groups: test
                   file: app/build/outputs/apk/release/app-release.apk
 
