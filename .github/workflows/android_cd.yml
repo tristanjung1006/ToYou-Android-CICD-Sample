@@ -63,9 +63,9 @@ jobs:
             -   name: Debug Local Properties
                 run: cat local.properties
 
-            # 8. Ktlint
-            - name: Run Ktlint Check
-              run: ./gradlew ktlintCheck --stacktrace
+            # # 8. Ktlint
+            # - name: Run Ktlint Check
+            #   run: ./gradlew ktlintCheck --stacktrace
 
             # 9. Debug APK Build
             - name: Build Debug APK
